@@ -1,80 +1,102 @@
 import './App.css';
 import {useEffect, useState} from "react";
-import {Tab, TabList, TabPanel, Tabs} from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import CalendarComponent from "./Components/Calendar/Calendar";
 import {formatDate} from "./Utils/DateUtils";
 import {requestRemoteDays} from "./Utils/Request";
+import {convertGroupToNumber} from "./Utils/GroupUtils";
+import {ListGroup, Row, Tab, Tabs} from "react-bootstrap";
 
 function App() {
-    let [remoteDays, setRemoteDays] = useState([]);
-    const [months] = useState([]);
+    const [remoteDays, setRemoteDays] = useState([]);
+    const [months, setMonths] = useState([]);
+    const [group, setGroup] = useState();
+    const [currentDate, setCurrentDate] = useState(formatDate(Date.now()));
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const currentDate = formatDate(Date.now());
     useEffect( () => {
-        const requestInitialMonth = async () => {
-            await requestNewMonth(currentDate, 5);
-        }
-        requestInitialMonth();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[]);
 
-    let onGroupSelected = (event) =>{
-        console.log("Selected value: ", event.target.value)
+        const requestNewMonth = async (selectedDate, group) => {
+            if (!months.find(month => {
+                return (
+                    selectedDate === month
+                );
+            })) {
+                try {
+                    const data = await requestRemoteDays(selectedDate, group);
+                    months.push(selectedDate);
+                    addRemoteDays(data);
+                    setLoading(false);
+                } catch (error){
+                    console.log(error);
+                    setError("An error occurred while connecting to the server");
+                    setLoading(false);
+                }
+            }
+        };
+
+        function addRemoteDays(daysToAdd) {
+            let addedRemoteDays = [...remoteDays, ...daysToAdd];
+            setRemoteDays(addedRemoteDays);
+        }
+
+        if (group && currentDate) {
+            requestNewMonth(currentDate, group);
+
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [group, currentDate])
+
+    const onGroupSelected = async (event) => {
+        const selectedGroup = convertGroupToNumber(event.target.innerText);
+        if(group !== selectedGroup) {
+            setMonths([]);
+            setRemoteDays([]);
+            setGroup(selectedGroup);
+            setLoading(true);
+            setError('');
+        }
     };
+
     return (
-        <div>
-            <h1>SIBS Remote Work Planner</h1>
-            <Tabs>
-                <TabList>
-                    <Tab>DOSAD</Tab>
-                </TabList>
-                <TabPanel>
-                    <div>
-                        <label htmlFor="groups">Group:</label>
-                        <select name="groups" id="groups" onChange={onGroupSelected} >
-                            <option disabled selected value>Select a group</option>
-                            <option value="g1">G1</option>
-                            <option value="g2">G2</option>
-                            <option value="g3">G3</option>
-                            <option value="g4">G4</option>
-                            <option value="g5">G5</option>
-                        </select>
+        <div className={"container-fluid py-3"}>
+            <div className={loading ? "loading" : "nodiv"} style={{fontSize: 0}}>Loading</div>
+            <Tabs defaultActiveKey="home" id="uncontrolled-tab-example" className="mb-sm-1">
+                <Tab eventKey="home" title="DOSAI">
+                    {error &&
+                        <div className="alert alert-danger" role="alert">
+                            {error}
+                        </div>
+                    }
+                    <div className="container">
+                        <Tab.Container id="list-group-tabs-example" defaultActiveKey="#link1">
+                            <Row>
+                            <ListGroup horizontal>
+                                <ListGroup.Item action href="#g1" onClick={onGroupSelected}>G1</ListGroup.Item>
+                                <ListGroup.Item action href="#g2" onClick={onGroupSelected}>G2</ListGroup.Item>
+                                <ListGroup.Item action href="#g3" onClick={onGroupSelected}>G3</ListGroup.Item>
+                                <ListGroup.Item action href="#g4" onClick={onGroupSelected}>G4</ListGroup.Item>
+                                <ListGroup.Item action href="#g5" onClick={onGroupSelected}>G5</ListGroup.Item>
+                            </ListGroup>
+                            </Row>
+                        </Tab.Container>
                     </div>
-                    <div>
+                    <div className="mt-2 col-xs-8 d-flex justify-content-center">
                         <CalendarComponent remoteDays={remoteDays} updateDays={updateRemoteDays}/>
                     </div>
-                </TabPanel>
+                </Tab>
             </Tabs>
+
+
+
         </div>
     );
 
 
-    function addRemoteDays(daysToAdd) {
-        let addedRemoteDays = [...remoteDays, ...daysToAdd];
-        setRemoteDays(addedRemoteDays);
-    }
-
-
     function updateRemoteDays({activeStartDate, value, view}) {
-
-        const selectedDate = formatDate(activeStartDate);
-
         if (view === 'month') {
-            requestNewMonth(selectedDate,5);
-        }
-    }
-
-    async function requestNewMonth(selectedDate, group) {
-
-        if (!months.find(month => {
-            return (
-                selectedDate === month
-            );
-        })) {
-            const data = await requestRemoteDays(selectedDate, group);
-            months.push(selectedDate);
-            addRemoteDays(data);
+            setCurrentDate(formatDate(activeStartDate));
         }
     }
 }

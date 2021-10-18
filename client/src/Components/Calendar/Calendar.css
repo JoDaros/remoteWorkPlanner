@@ -1,3 +1,8 @@
 .highlight {
-    background-color:dodgerblue;
+    background-color:#1D9CE5;
+}
+.square {
+    height: 50px;
+    width: 50px;
+    background-color:#1D9CE5;
 }

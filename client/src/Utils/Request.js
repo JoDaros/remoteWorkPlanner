@@ -1,9 +1,9 @@
 import axios from "axios";
 
-const apiUrl = "http://localhost:8080";
+const apiUrl = "https://sibs-remote-work.ew.r.appspot.com";
 
 export async function requestRemoteDays (month, group) {
-    const {data} = await axios.get(`${apiUrl}/remoteWork/month`,
+    const {data} = await axios.get(`${apiUrl}/remoteDays/dosad/month`,
         {params: {month: month, group: group}});
-    return data;
+    return data.remoteDays;
 }

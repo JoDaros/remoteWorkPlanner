@@ -5,6 +5,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
 code {
@@ -12,6 +13,16 @@ code {
     monospace;
 }
 
-.highlight {
-  background-color:red;
+body {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+.content {
+  flex: 1;
+}
+@media only screen and (max-width: 768px) {
+  .content {
+    width: 100%;
+  }
 }

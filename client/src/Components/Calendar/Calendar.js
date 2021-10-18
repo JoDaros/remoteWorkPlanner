@@ -21,6 +21,7 @@ class CalendarComponent extends Component {
                 //onChange={onChange}
                 onActiveStartDateChange={this.props.updateDays}
                 tileClassName={({ activeStartDate, date, view }) => this.setClass(date)}
+                minDate={new Date("2021-10-01")}
             />
         );
     }

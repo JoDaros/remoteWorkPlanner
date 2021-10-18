@@ -1,72 +1,52 @@
 package com.example.api.resources;
 
+import com.example.api.qualifiers.NoWrapRootValueObjectMapper;
+import com.example.api.responses.RemoteDaysResponse;
+import com.example.api.utils.DateUtils;
 import com.example.models.RemoteGroup;
-import org.jboss.resteasy.reactive.RestQuery;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.RequestScoped;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import java.time.DayOfWeek;
+import javax.ws.rs.core.Response;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalField;
-import java.time.temporal.WeekFields;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
-@Path("/remoteWork")
-@ApplicationScoped
+@Path("/dosad")
+@RequestScoped
 public class DosadResource {
 
-    private final TemporalField fieldISO = WeekFields.of(Locale.FRANCE).dayOfWeek();
-    private RemoteGroup[] groups;
+    @NoWrapRootValueObjectMapper ObjectMapper objectMapper;
 
-    public DosadResource(){
-        RemoteGroup g1 = new RemoteGroup(LocalDate.parse("2021-09-27"),1);
-        RemoteGroup g2 = new RemoteGroup(LocalDate.parse("2021-09-28"),2);
-        RemoteGroup g3 = new RemoteGroup(LocalDate.parse("2021-09-29"),3);
-        RemoteGroup g4 = new RemoteGroup(LocalDate.parse("2021-09-30"),4);
-        RemoteGroup g5 = new RemoteGroup(LocalDate.parse("2021-10-01"),5);
-        groups = new RemoteGroup[]{g1, g2, g3, g4, g5};
-    }
-
-    @GET
-    @Path("week")
-    @Produces(MediaType.APPLICATION_JSON)
-
-    public LocalDate[] getWeekdays(@RestQuery String weekOf, @RestQuery int group) {
-
-        LocalDate date = LocalDate.parse(weekOf, DateTimeFormatter.ISO_LOCAL_DATE);
-        return getWeekRemoteDays(groups[group-1], date);
-
-    }
-
-    @GET
-    @Path("day")
-    @Produces(MediaType.APPLICATION_JSON)
-
-    public boolean isRemoteDay(@RestQuery String day, @RestQuery int group) {
-
-        LocalDate dateDay = LocalDate.parse(day, DateTimeFormatter.ISO_LOCAL_DATE);
-
-        return Arrays.asList(getWeekRemoteDays(groups[group-1], dateDay)).contains(dateDay);
-
-    }
+    private static RemoteGroup[] groups = {
+            new RemoteGroup(LocalDate.parse("2021-09-27"), 1),
+            new RemoteGroup(LocalDate.parse("2021-09-28"), 2),
+            new RemoteGroup(LocalDate.parse("2021-09-29"), 3),
+            new RemoteGroup(LocalDate.parse("2021-09-30"), 4),
+            new RemoteGroup(LocalDate.parse("2021-10-01"), 5)
+    };
 
     @GET
     @Path("month")
     @Produces(MediaType.APPLICATION_JSON)
-
-    public LocalDate[] getMonthRemoteDays(@RestQuery String month, @RestQuery int group) {
+    public Response getMonthRemoteDays(@QueryParam("month") String month, @QueryParam("group") int group) throws JsonProcessingException {
 
         LocalDate dateMonth = LocalDate.parse(month, DateTimeFormatter.ISO_LOCAL_DATE);
 
-        YearMonth currentYearMonth = YearMonth.of(dateMonth.getYear(),dateMonth.getMonth());
+        Response responseError = requestValidation(dateMonth,group);
+        if(responseError!=null){
+            return responseError;
+        }
+
+        YearMonth currentYearMonth = YearMonth.of(dateMonth.getYear(), dateMonth.getMonth());
 
         LocalDate begin = currentYearMonth.atDay(1);
         LocalDate end = currentYearMonth.atEndOfMonth();
@@ -76,78 +56,36 @@ public class DosadResource {
 
         LocalDate firstDayRemote;
 
-        RemoteGroup remoteGroup = groups[group-1];
+        RemoteGroup remoteGroup = groups[group - 1];
 
-        while (aux.isBefore(end) && !aux.equals(end)){
-            firstDayRemote = getFirstRemoteDayOnWeek(remoteGroup, aux);
-            remoteGroup = new RemoteGroup(firstDayRemote,group);
+        while (aux.isBefore(end) && !aux.equals(end)) {
+            firstDayRemote = DateUtils.getFirstRemoteDayOnWeek(remoteGroup, aux);
+            remoteGroup = new RemoteGroup(firstDayRemote, group);
             remoteDays.add(firstDayRemote);
-            remoteDays.add(getNextRemoteDay(firstDayRemote));
+            remoteDays.add(DateUtils.getNextRemoteDay(firstDayRemote));
             aux = aux.plusWeeks(1);
         }
-        remoteDays.sort( LocalDate::compareTo);
+        remoteDays.sort(LocalDate::compareTo);
         LocalDate[] array = new LocalDate[remoteDays.size()];
-        return remoteDays.toArray(array);
+        return Response.ok(objectMapper.writeValueAsString(new RemoteDaysResponse(remoteDays.toArray(array))))
+                .status(Response.Status.OK).build();
     }
 
+    public Response requestValidation(LocalDate date, int group){
+        LocalDate lowerLimitDate = LocalDate.of(2021,10,1);
+        LocalDate upperLimit = LocalDate.now().plusYears(2);
 
-    public LocalDate[] getWeekRemoteDays(RemoteGroup group, LocalDate weekday){
-        LocalDate firstDayRemote = getFirstRemoteDayOnWeek(group,weekday);
-        return new LocalDate[]{firstDayRemote,getNextRemoteDay(firstDayRemote)};
-    }
-
-
-    public DayOfWeek getNextWorkDay(DayOfWeek dayOfWeek){
-
-        int val = dayOfWeek.getValue() + 1;
-
-        if(val<2){
-            return DayOfWeek.FRIDAY;
-        }
-        if(val>5){
-            return DayOfWeek.MONDAY;
+        if(date.isBefore(lowerLimitDate)){
+            return Response.status(Response.Status.NOT_FOUND).entity(String.format("There are no results before %s",lowerLimitDate)).build();
         }
 
-        return DayOfWeek.of(val);
-
-    }
-
-    public DayOfWeek getPreviousWorkDay(DayOfWeek dayOfWeek){
-
-        int val = dayOfWeek.getValue() - 1;
-
-        if(val<2){
-            return DayOfWeek.FRIDAY;
+        if(date.isAfter(upperLimit)){
+            return Response.status(Response.Status.NOT_FOUND).entity(String.format("There are no results after %s",lowerLimitDate)).build();
         }
 
-        return DayOfWeek.of(val);
-
-    }
-
-    public LocalDate getNextRemoteDay(LocalDate date){
-
-        return date.with(fieldISO, getNextWorkDay(date.getDayOfWeek()).getValue());
-
-    }
-
-    public LocalDate getPreviousValidRemoteDay(LocalDate date){
-
-        if(date.getDayOfWeek()==DayOfWeek.SATURDAY || date.getDayOfWeek()==DayOfWeek.SUNDAY ) {
-            return date.with(fieldISO, getPreviousWorkDay(date.getDayOfWeek()).getValue());
+        if(group>5 || group<1){
+            return Response.status(Response.Status.NOT_FOUND).entity(String.format("Groups must be between %d and %d",1,5)).build();
         }
-        else{
-            return date;
-        }
+        return null;
     }
-
-    public LocalDate getFirstRemoteDayOnWeek(RemoteGroup group, LocalDate weekday){
-        LocalDate startOfWeek = weekday.with(fieldISO, 1);
-
-        LocalDate firstDayRemote = group.getFirstDayRemote();
-        while (firstDayRemote.isBefore(startOfWeek) && !firstDayRemote.equals(startOfWeek)){
-            firstDayRemote = getPreviousValidRemoteDay(firstDayRemote.plusDays(6));
-        }
-        return firstDayRemote;
-    }
-
 }
