@@ -64,6 +64,14 @@ footer-basic {
     margin-bottom:0;
 }
 
+.footer-basic .version {
+    margin-top:5px;
+    text-align:center;
+    font-size:11px;
+    color:#aaa;
+    margin-bottom:0;
+}
+
 .side-by-side {
     width: 100%;
 }

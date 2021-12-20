@@ -1,7 +1,7 @@
-export function formatDate(date) {
+export function getFirstDayOfMonthFormatted(date) {
     let d = new Date(date),
         month = '' + (d.getMonth() + 1),
-        day = '' + d.getDate(),
+        day = '' + 1,
         year = d.getFullYear();
 
     if (month.length < 2)
