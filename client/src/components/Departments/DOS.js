@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import GroupInput from "../Group/GroupInput";
 import RemoteCalendar from "../Calendar/RemoteCalendar";
 import { getFirstDayOfMonthFormatted } from "../../Utils/DateUtils";
-import { convertGroupToNumber } from "../../Utils/GroupUtils";
 import { requestRemoteDays } from "../../Utils/Request";
 
 const DOS = (props) => {
   const [remoteDays, setRemoteDays] = useState([]);
   const [group, setGroup] = useState();
-  const [selectedDate, setSelectedDate] = useState(getFirstDayOfMonthFormatted(Date.now()));
+  const [selectedDate, setSelectedDate] = useState(
+    getFirstDayOfMonthFormatted(Date.now())
+  );
   const [requestedMonths, setRequestedMonths] = useState([]);
 
   const requestRemoteDaysFromServer = async (
@@ -29,9 +30,9 @@ const DOS = (props) => {
         setRemoteDays((prevRemoteDays) => {
           return prevRemoteDays.concat([...newRemoteDays]);
         });
-        setRequestedMonths(prevRequestMonths => {
+        setRequestedMonths((prevRequestMonths) => {
           return prevRequestMonths.concat(requestDate);
-        })
+        });
       }
     } catch (error) {
       console.log(error);
@@ -41,8 +42,7 @@ const DOS = (props) => {
     props.onLoading(false);
   };
 
-  const selectGroupHandler = async (event) => {
-    const selectedGroup = convertGroupToNumber(event.target.innerText);
+  const selectGroupHandler = async (selectedGroup) => {
     const newRequestedMonths = [];
 
     if (group === selectedGroup) {
@@ -62,10 +62,10 @@ const DOS = (props) => {
     );
   };
 
-  const selectDateHandler = async ({ activeStartDate, value, view }) => {
-    if (view === "month") {
-      const newDate = getFirstDayOfMonthFormatted(activeStartDate);
-      setSelectedDate(newDate);
+  const selectedDateHandler = async (selectedDate) => {
+    const newDate = getFirstDayOfMonthFormatted(selectedDate);
+    setSelectedDate(newDate);
+    if (group) {
       await requestRemoteDaysFromServer(requestedMonths, newDate, group);
     }
   };
@@ -73,7 +73,10 @@ const DOS = (props) => {
   return (
     <React.Fragment>
       <GroupInput onGroupSelected={selectGroupHandler} />
-      <RemoteCalendar remoteDays={remoteDays} updateDays={selectDateHandler} />
+      <RemoteCalendar
+        remoteDays={remoteDays}
+        onChangeSelectedDate={selectedDateHandler}
+      />
     </React.Fragment>
   );
 };

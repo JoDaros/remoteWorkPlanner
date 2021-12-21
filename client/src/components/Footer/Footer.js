@@ -15,7 +15,7 @@ function Footer() {
             </li>
           </ul>
           <p className="copyright">João Barros © 2021</p>
-          <p className="version">Version 1.3</p>
+          <p className="version">Version 1.3.1 - 2021-12-21</p>
         </div>
       </div>
     </footer>
